@@ -48,8 +48,7 @@ export default {
 
         try {
             this.items = JSON.parse(items);
-            console.log(this.items);
-        } catch (err) {
+        } catch {
             console.warn("invalid json in local storage");
             console.log(items);
         }
@@ -65,16 +64,16 @@ export default {
     <button type="submit">Create table</button>
 </form>
 
-<div v-if="items.length" class="col items">
-    <div v-for="it in items" class="row item">
-        <button class="btn-delete">x</button>
-        <div class="col">
+<div v-if="items.length" class="items">
+    <div v-for="it in items" class="items__item">
+        <button class="item__delete-btn btn btn--danger box">&#215;</button>
+        <div class="table">
             <h3>{{ it.name }}</h3>
-            <div class="row table" style="">
-                <div v-for="t in it.table" class="col table-item">
+            <div class="table__item-container">
+                <div v-for="t in it.table" class="table__item">
                     <input class="box" />
-                    <button class="box">s</button>
-                    <button class="box">w</button>
+                    <button class="btn box"></button>
+                    <button class="btn box"></button>
                 </div>
             </div>
         </div>
@@ -83,41 +82,57 @@ export default {
 </template>
 
 <style scoped>
-.row {
-    display: flex;
-    flex-direction: row;
-}
-
-.col {
+.items {
     display: flex;
     flex-direction: column;
-}
-
-.items {
-    gap: 1rem;
     align-items: center;
-}
-
-.item {
     gap: 1rem;
 }
 
-.btn-delete {
+.items__item {
+    display: flex;
+    gap: 1rem;
+}
+
+.item__delete-btn {
     align-self: start;
 }
 
 .table {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.table__item-container {
+    display: flex;
     gap: 1px;
 }
 
-.table-item {
+.table__item {
+    display: flex;
+    flex-direction: column;
     gap: 1px;
 }
 
 .box {
+    border: 1px solid black;
     width: 20px;
     height: 20px;
     text-align: center;
+}
+
+.btn {
+    background: white;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: whitesmoke;
+}
+
+.btn--danger:hover {
+    background: lightcoral;
 }
 
 /* debug */
