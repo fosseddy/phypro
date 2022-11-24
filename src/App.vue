@@ -1,12 +1,9 @@
 <script>
-const MONDAY = 1;
-const SUNDAY = 0;
-const TABLE_ROWS_COUNT = 6;
-
 export default {
     data() {
         return {
-            table: []
+            tablename: "",
+            items: []
         };
     },
 
@@ -15,55 +12,117 @@ export default {
 
     methods: {
         createTable() {
-            let row = [];
+            this.tablename = this.tablename.trim();
+            if (!this.tablename.length) return;
 
-            let weekday = 0;
-            let day = 1;
+            const item = {
+                name: this.tablename,
+                table: []
+            };
 
-            const now = new Date();
-
-            const lastday =
-                new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-
-            const prevMonthLastday =
-                new Date(now.getFullYear(), now.getMonth(), 0).getDate();
-
-            let firstdayWeekday =
-                new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-
-            if (firstdayWeekday === SUNDAY) firstdayWeekday = 7;
-
-            for (let i = 0; firstdayWeekday !== MONDAY; i++) {
-                row[weekday++] = prevMonthLastday - i;
-                firstdayWeekday--;
-            }
-            row.reverse();
-
-            for (let i = 0; i < TABLE_ROWS_COUNT; i++) {
-                while (weekday < 7) {
-                    row[weekday++] = day++;
-                    if (day > lastday) day = 1;
-                }
-
-                this.table.push(row);
-                row = [];
-                weekday = 0;
-
-                if (i === 4 && this.table[i].includes(1)) break;
+            for (let day = 1; day <= 31; day++) {
+                item.table.push({
+                    day,
+                    weightval: "",
+                    weight: false,
+                    workout: false,
+                    supplement: false
+                });
             }
 
-            console.log(this.table);
+            this.items = [item, ...this.items];
+            localStorage.setItem("phypro-items", JSON.stringify(this.items));
+
+            this.tablename = "";
+        },
+
+        clear() {
+            localStorage.clear();
+            this.items = [];
         }
     },
 
     created() {
-        this.createTable();
+        const items = localStorage.getItem("phypro-items");
+        if (!items) return;
+
+        try {
+            this.items = JSON.parse(items);
+            console.log(this.items);
+        } catch (err) {
+            console.warn("invalid json in local storage");
+            console.log(items);
+        }
     }
 };
 </script>
 
 <template>
+<button @click="clear">clear</button>
+
+<form @submit.prevent="createTable">
+    <input placeholder="name..." v-model="tablename" />
+    <button type="submit">Create table</button>
+</form>
+
+<div v-if="items.length" class="col items">
+    <div v-for="it in items" class="row item">
+        <button class="btn-delete">x</button>
+        <div class="col">
+            <h3>{{ it.name }}</h3>
+            <div class="row table" style="">
+                <div v-for="t in it.table" class="col table-item">
+                    <input class="box" />
+                    <button class="box">s</button>
+                    <button class="box">w</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </template>
 
 <style scoped>
+.row {
+    display: flex;
+    flex-direction: row;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}
+
+.items {
+    gap: 1rem;
+    align-items: center;
+}
+
+.item {
+    gap: 1rem;
+}
+
+.btn-delete {
+    align-self: start;
+}
+
+.table {
+    gap: 1px;
+}
+
+.table-item {
+    gap: 1px;
+}
+
+.box {
+    width: 20px;
+    height: 20px;
+    text-align: center;
+}
+
+/* debug */
+.bred   { border: 1px solid red; }
+.bgreen { border: 1px solid green; }
+.bblue  { border: 1px solid blue; }
+.bblack { border: 1px solid black; }
 </style>
