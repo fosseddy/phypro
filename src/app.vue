@@ -16,6 +16,7 @@ export default {
             if (!this.tablename.length) return;
 
             const item = {
+                id: Math.random().toString(36).slice(2),
                 name: this.tablename,
                 table: []
             };
@@ -36,9 +37,10 @@ export default {
             this.tablename = "";
         },
 
-        clear() {
-            localStorage.clear();
-            this.items = [];
+        deleteItem(item) {
+            if (!confirm("Are you sure?")) return;
+            this.items = this.items.filter(it => it.id !== item.id);
+            localStorage.setItem("phypro-items", JSON.stringify(this.items));
         }
     },
 
@@ -57,20 +59,22 @@ export default {
 </script>
 
 <template>
-<button @click="clear">clear</button>
-
 <form @submit.prevent="createTable">
     <input placeholder="name..." v-model="tablename" />
     <button type="submit">Create table</button>
 </form>
 
 <div v-if="items.length" class="items">
-    <div v-for="it in items" class="items__item">
-        <button class="item__delete-btn btn btn--danger box">&#215;</button>
+    <div v-for="it in items" class="items__item" :key="it.id">
+        <button class="item__delete-btn btn btn--danger box"
+                @click="deleteItem(it)"
+        >
+            &#215;
+        </button>
         <div class="table">
             <h3>{{ it.name }}</h3>
             <div class="table__item-container">
-                <div v-for="t in it.table" class="table__item">
+                <div v-for="t in it.table" class="table__item" :key="t.day">
                     <input class="box" />
                     <button class="btn box"></button>
                     <button class="btn box"></button>
@@ -134,10 +138,4 @@ export default {
 .btn--danger:hover {
     background: lightcoral;
 }
-
-/* debug */
-.bred   { border: 1px solid red; }
-.bgreen { border: 1px solid green; }
-.bblue  { border: 1px solid blue; }
-.bblack { border: 1px solid black; }
 </style>
