@@ -11,6 +11,10 @@ export default {
     },
 
     methods: {
+        updateStorage() {
+            localStorage.setItem("phypro-items", JSON.stringify(this.items));
+        },
+
         createTable() {
             this.tablename = this.tablename.trim();
             if (!this.tablename.length) return;
@@ -32,13 +36,9 @@ export default {
             }
 
             this.items = [item, ...this.items];
-            localStorage.setItem("phypro-items", JSON.stringify(this.items));
+            this.updateStorage();
 
             this.tablename = "";
-        },
-
-        updateStorage() {
-            localStorage.setItem("phypro-items", JSON.stringify(this.items));
         },
 
         setItemValue(item, key, val) {
