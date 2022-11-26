@@ -87,7 +87,6 @@ export default {
 <template>
 <form @submit.prevent="createTable">
     <input placeholder="name..." v-model="tablename" />
-    <button type="submit">Create table</button>
 </form>
 
 <div v-if="items.length" class="items">
@@ -107,8 +106,18 @@ export default {
                            @input="validateWeightValue"
                            @change="changeWeightValue($event, t)"
                     />
-                    <button class="btn box"></button>
-                    <button class="btn box"></button>
+                    <button class="btn box"
+                            :class="{ 'supplement--active': t.supplement }"
+                            @click="setItemValue(t, 'supplement',
+                                                 !t.supplement)"
+                    >
+                    </button>
+                    <button class="btn box"
+                            :class="{ 'workout--active': t.workout }"
+                            @click="setItemValue(t, 'workout', !t.workout)"
+                    >
+                        {{ t.day }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -117,10 +126,13 @@ export default {
 </template>
 
 <style scoped>
+form {
+    margin-bottom: 3rem;
+}
+
 .items {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 1rem;
 }
 
@@ -155,15 +167,16 @@ export default {
     width: 21px;
     height: 21px;
     text-align: center;
+    transition: all .2s ease-in-out;
+}
+
+.box:hover {
+    transform: scale(1.2);
 }
 
 .btn {
     background: white;
     cursor: pointer;
-}
-
-.btn:hover {
-    background: whitesmoke;
 }
 
 .btn--danger:hover {
@@ -172,5 +185,13 @@ export default {
 
 .weight--active {
     background: thistle;
+}
+
+.supplement--active {
+    background: moccasin;
+}
+
+.workout--active {
+    background: lightgreen;
 }
 </style>
