@@ -37,10 +37,36 @@ export default {
             this.tablename = "";
         },
 
+        updateStorage() {
+            localStorage.setItem("phypro-items", JSON.stringify(this.items));
+        },
+
+        setItemValue(item, key, val) {
+            if (!Object.hasOwn(item, key)) {
+                return console.warn("item", item, "does not have key", key);
+            }
+
+            item[key] = val;
+            this.updateStorage();
+        },
+
         deleteItem(item) {
             if (!confirm("Are you sure?")) return;
             this.items = this.items.filter(it => it.id !== item.id);
-            localStorage.setItem("phypro-items", JSON.stringify(this.items));
+            this.updateStorage();
+        },
+
+        validateWeightValue(event) {
+            const re = /^[1-9]{1}([0-9]{1})?$/;
+            const input = event.target;
+            if (!re.test(input.value)) {
+                input.value = input.value.slice(0, -1);
+            }
+        },
+
+        changeWeightValue(event, item) {
+            item.weightval = event.target.value;
+            this.setItemValue(item, "weight", item.weightval.length > 0);
         }
     },
 
@@ -75,7 +101,12 @@ export default {
             <h3>{{ it.name }}</h3>
             <div class="table__item-container">
                 <div v-for="t in it.table" class="table__item" :key="t.day">
-                    <input class="box" />
+                    <input class="box"
+                           :class="{ 'weight--active': t.weight }"
+                           :value="t.weightval"
+                           @input="validateWeightValue"
+                           @change="changeWeightValue($event, t)"
+                    />
                     <button class="btn box"></button>
                     <button class="btn box"></button>
                 </div>
@@ -121,8 +152,8 @@ export default {
 
 .box {
     border: 1px solid black;
-    width: 20px;
-    height: 20px;
+    width: 21px;
+    height: 21px;
     text-align: center;
 }
 
@@ -137,5 +168,9 @@ export default {
 
 .btn--danger:hover {
     background: lightcoral;
+}
+
+.weight--active {
+    background: thistle;
 }
 </style>
