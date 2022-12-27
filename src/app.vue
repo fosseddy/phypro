@@ -7,9 +7,6 @@ export default {
         };
     },
 
-    computed: {
-    },
-
     methods: {
         updateStorage() {
             localStorage.setItem("phypro-items", JSON.stringify(this.items));
