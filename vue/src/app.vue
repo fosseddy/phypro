@@ -1,135 +1,136 @@
 <script setup>
-//export default {
-//    data() {
-//        return {
-//            tablename: "",
-//            items: []
-//        };
-//    },
 
-//    methods: {
-//        updateStorage() {
-//            localStorage.setItem("phypro-items", JSON.stringify(this.items));
-//        },
-
-//        createTable() {
-//            this.tablename = this.tablename.trim();
-//            if (!this.tablename.length) return;
-
-//            const item = {
-//                id: Math.random().toString(36).slice(2),
-//                name: this.tablename,
-//                table: []
-//            };
-
-//            for (let day = 1; day <= 31; day++) {
-//                item.table.push({
-//                    day,
-//                    weightval: "",
-//                    weight: false,
-//                    workout: false,
-//                    supplement: false
-//                });
-//            }
-
-//            this.items = [item, ...this.items];
-//            this.updateStorage();
-
-//            this.tablename = "";
-//        },
-
-//        setItemValue(item, key, val) {
-//            if (!Object.hasOwn(item, key)) {
-//                return console.warn("item", item, "does not have key", key);
-//            }
-
-//            item[key] = val;
-//            this.updateStorage();
-//        },
-
-//        deleteItem(item) {
-//            if (!confirm("Are you sure?")) return;
-//            this.items = this.items.filter(it => it.id !== item.id);
-//            this.updateStorage();
-//        },
-
-//        validateWeightValue(event) {
-//            const re = /^[1-9]{1}([0-9]{1})?$/;
-//            const input = event.target;
-//            if (!re.test(input.value)) {
-//                input.value = input.value.slice(0, -1);
-//            }
-//        },
-
-//        changeWeightValue(event, item) {
-//            item.weightval = event.target.value;
-//            this.setItemValue(item, "weight", item.weightval.length > 0);
-//        }
-//    },
-
-//    created() {
-//        const items = localStorage.getItem("phypro-items");
-//        if (!items) return;
-
-//        try {
-//            this.items = JSON.parse(items);
-//        } catch {
-//            console.warn("invalid json in local storage");
-//            console.log(items);
-//        }
-//    }
-//};
 import * as Vue from "vue";
 
-const name = Vue.ref("world");
+const name = Vue.ref("");
+const months = Vue.ref([]);
+const error = Vue.ref("");
+const loading = Vue.ref(false);
+
+(async () => {
+    try {
+        let res = await fetch("/api/month");
+
+        res = await res.json();
+
+        if (res.error) {
+            error.value = res.error.message;
+        } else {
+            months.value = res.data.items;
+        }
+    } catch (err) {
+        console.error(err);
+        error.value = "something went wrong, but it is not your fault";
+    }
+})();
+
+async function createMonth() {
+    error.value = "";
+    const n = name.value.trim();
+
+    if (!n) {
+        error.value = "month name is required";
+        return;
+    }
+
+    loading.value = true;
+
+    try {
+        let res = await fetch("/api/month", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ name: n })
+        });
+
+        res = await res.json();
+
+        if (res.error) {
+            error.value = res.error.message;
+            return;
+        }
+
+        months.value.unshift(res.data);
+
+        name.value = "";
+    } catch (err) {
+        console.error(err);
+        error.value = "something went wrong, but it is not your fault";
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function deleteMonth(m) {
+    loading.value = true;
+
+    try {
+        let res = await fetch(`/api/month?id=${m.id}`, { method: "DELETE" });
+        res = await res.json();
+
+        if (res.error) {
+            error.value = res.error.message;
+            return;
+        }
+
+        months.value = months.value.filter(it => it.id !== m.id);
+    } catch (err) {
+        console.error(err);
+        error.value = "something went wrong, but it is not your fault";
+    } finally {
+        loading.value = false;
+    }
+}
+
 </script>
 
-<template>
-    <h1>hello, {{name}}</h1>
-    <input v-model="name">
-</template>
 
-<!--template>
-<form @submit.prevent="createTable">
-    <input placeholder="name..." v-model="tablename" />
+
+<template>
+
+<form @submit.prevent="createMonth">
+    <input v-model="name">
+    <button type="submit" :disabled="loading">{{loading ? "Loading..." : "Create"}}</button>
 </form>
 
-<div v-if="items.length" class="items">
-    <div v-for="it in items" class="items__item" :key="it.id">
-        <button class="item__delete-btn btn btn--danger box"
-                @click="deleteItem(it)"
-        >
+<p v-if="error">{{error}}</p>
+
+<div v-if="months.length" class="items">
+    <div v-for="it in months" class="items__item" :key="it.id">
+        <button class="item__delete-btn btn btn--danger box" @click="deleteMonth(it)">
             &#215;
         </button>
         <div class="table">
             <h3>{{ it.name }}</h3>
             <div class="table__item-container">
-                <div v-for="t in it.table" class="table__item" :key="t.day">
+                <div v-for="t in it.days" class="table__item" :key="t.id">
                     <input class="box"
-                           :class="{ 'weight--active': t.weight }"
-                           :value="t.weightval"
-                           @input="validateWeightValue"
-                           @change="changeWeightValue($event, t)"
+                           title="weight"
+                           :class="{ 'weight--active': t.weight > 0 }"
+                           :value="t.weight > 0 || ''"
                     />
                     <button class="btn box"
-                            :class="{ 'supplement--active': t.supplement }"
-                            @click="setItemValue(t, 'supplement', !t.supplement)"
+                            title="supplement"
+                            :class="{ 'supplement--active': !!t.supplement }"
                     >
                     </button>
                     <button class="btn box"
-                            :class="{ 'workout--active': t.workout }"
-                            @click="setItemValue(t, 'workout', !t.workout)"
+                            title="workout"
+                            :class="{ 'workout--active': !!t.workout }"
                     >
-                        {{ t.day }}
+                        {{ t.value }}
                     </button>
                 </div>
             </div>
         </div>
     </div>
 </div>
-</template-->
+
+</template>
+
+
 
 <style scoped>
+
 form {
     margin-bottom: 3rem;
 }
@@ -198,4 +199,25 @@ form {
 .workout--active {
     background: lightgreen;
 }
+
+</style>
+
+
+
+<style>
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+html, body, #app { height: 100%; }
+
+#app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 </style>
