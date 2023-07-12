@@ -95,52 +95,21 @@ $app->add_route(
     "GET",
     "/api/month",
     function(array $ctx) {
-        $data = $ctx["db"]->query_many(
-            "select M.id, M.name,
-                    D.id as d_id, D.weight, D.workout, D.supplement, D.value
-             from month as M
-             left join day as D on M.id = D.month_id
-             order by M.created_at desc"
+        $months = $ctx["db"]->query_many(
+            "select id, name from month order by created_at desc"
         );
 
-        $items = [];
-
-        foreach ($data as $it)
+        foreach ($months as $i => $it)
         {
-            $month_id = $it["id"];
-
-            if (isset($items[$month_id]))
-            {
-                $items[$month_id]["days"][] = [
-                    "id" => $it["d_id"],
-                    "weight" => $it["weight"],
-                    "workout" => $it["workout"],
-                    "supplement" => $it["supplement"],
-                    "value" => $it["value"]
-                ];
-            }
-            else
-            {
-                $items[$month_id] = [
-                    "id" => $it["id"],
-                    "name" => $it["name"],
-                    "days" => [
-                        [
-                            "id" => $it["d_id"],
-                            "weight" => $it["weight"],
-                            "workout" => $it["workout"],
-                            "supplement" => $it["supplement"],
-                            "value" => $it["value"]
-                        ]
-                    ]
-                ];
-            }
+            $months[$i]["days"] = $ctx["db"]->query_many(
+                "select id, weight, workout, supplement, value from day
+                 where month_id = ? order by value",
+                [$it["id"]]
+            );
         }
 
-        $items = array_values($items);
-
         http_response_code(200);
-        echo json_encode(["data" => ["items" => $items]]);
+        echo json_encode(["data" => ["items" => $months]]);
     }
 );
 
