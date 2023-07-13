@@ -40,12 +40,7 @@ $app->add_route(
         if (!$name)
         {
             http_response_code(400);
-            echo json_encode([
-                "error" => [
-                    "message" => "name is required",
-                    "value" => $name
-                ]
-            ]);
+            echo json_encode(["error" => ["message" => "name is required"]]);
             exit;
         }
 
@@ -122,12 +117,7 @@ $app->add_route(
         if (!$id)
         {
             http_response_code(400);
-            echo json_encode([
-                "error" => [
-                    "message" => "id is required",
-                    "value" => $id
-                ]
-            ]);
+            echo json_encode(["error" => ["message" => "id is required"]]);
             exit;
         }
 
@@ -139,12 +129,7 @@ $app->add_route(
         if (!$month)
         {
             http_response_code(404);
-            echo json_encode([
-                "error" => [
-                    "message" => "month not found",
-                    "value" => $id
-                ]
-            ]);
+            echo json_encode(["error" => ["message" => "month not found"]]);
             exit;
         }
 
@@ -154,6 +139,80 @@ $app->add_route(
 
         http_response_code(200);
         echo json_encode(["data" => $month]);
+    }
+);
+
+$app->add_route(
+    "PATCH",
+    "/api/day",
+    function(array $ctx) {
+        $id = trim($_GET["id"] ?? "");
+
+        if (!$id)
+        {
+            http_response_code(400);
+            echo json_encode(["error" => ["message" => "id is required"]]);
+            exit;
+        }
+
+        $body = json_decode(file_get_contents("php://input"), true);
+        $fields = [];
+
+        // TODO(art): validate that fields are numbers
+
+        if (isset($body["workout"]))
+        {
+            $fields["workout"] = $body["workout"];
+        }
+
+        if (isset($body["supplement"]))
+        {
+            $fields["supplement"] = $body["supplement"];
+        }
+
+        if (isset($body["weight"]))
+        {
+            $fields["weight"] = $body["weight"];
+        }
+
+        if (!$fields)
+        {
+            http_response_code(400);
+            echo json_encode([
+                "error" => [
+                    "message" => "provide field to update"
+                ]
+            ]);
+            exit;
+        }
+
+        $day = $ctx["db"]->query_one(
+            "select id, weight, workout, supplement, value
+             from day where id = ?",
+            [$id]
+        );
+
+        if (!$day)
+        {
+            http_response_code(404);
+            echo json_encode(["error" => ["message" => "day not found"]]);
+            exit;
+        }
+
+        $sql = [];
+        $vals = [];
+        foreach ($fields as $k => $v)
+        {
+            $sql[] = "$k = ?";
+            $vals[] = $v;
+            $day[$k] = $v;
+        }
+
+        $sql = join(", ", $sql);
+        $ctx["db"]->exec("update day set $sql where id = ?", [...$vals, $id]);
+
+        http_response_code(200);
+        echo json_encode(["data" => $day]);
     }
 );
 
