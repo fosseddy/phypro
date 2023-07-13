@@ -2,9 +2,7 @@
 
 set -xe
 
-if [[ $1 == "clean" ]]; then
-    rm -rf public/assets views/index.php
-fi
+rm -rf public/assets views/index.php
 
 mkdir -p views
 
