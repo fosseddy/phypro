@@ -1,4 +1,6 @@
-import { createApp } from "vue";
-import App from "./app.vue";
+import { createApp, h } from "vue";
 
-createApp(App).mount("#app");
+import App from "@/app.vue";
+import ErrorBoundary from "@/error-boundary.vue";
+
+createApp(h(ErrorBoundary, () => h(App))).mount("#app");

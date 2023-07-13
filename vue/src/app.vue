@@ -1,84 +1,66 @@
 <script setup>
 
 import * as Vue from "vue";
+import * as http from "@/http.js";
 
 const name = Vue.ref("");
 const months = Vue.ref([]);
-const error = Vue.ref("");
+const error = Vue.ref(null);
 const loading = Vue.ref(false);
 
 (async () => {
-    try {
-        let res = await fetch("/api/month");
-
-        res = await res.json();
-
-        if (res.error) {
-            error.value = res.error.message;
-        } else {
-            months.value = res.data.items;
-        }
-    } catch (err) {
-        console.error(err);
-        error.value = "something went wrong, but it is not your fault";
-    }
+    const data = await http.useApi(http.month.fetchAll, loading, error);
+    if (!error.value) months.value = data.items;
 })();
 
 async function createMonth() {
-    error.value = "";
     const n = name.value.trim();
+    if (!n) return;
 
-    if (!n) {
-        error.value = "month name is required";
+    const data = await http.useApi(() => http.month.create(n), loading, error);
+    if (error.value) return;
+
+    months.value.unshift(data);
+    name.value = "";
+}
+
+async function deleteMonth(id) {
+    await http.useApi(() => http.month.remove(id), loading, error);
+    if (error.value) return;
+
+    months.value = months.value.filter(it => it.id !== id);
+}
+
+async function updateDayValue(day, key, val) {
+    if (!Object.hasOwn(day, key)) {
+        console.error("day", day, "does not have key", key);
         return;
     }
 
-    loading.value = true;
+    await http.useApi(
+        () => http.day.update(day.id, { [key]: val }),
+        loading,
+        error
+    );
+    if (error.value) return;
 
-    try {
-        let res = await fetch("/api/month", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ name: n })
-        });
-
-        res = await res.json();
-
-        if (res.error) {
-            error.value = res.error.message;
-            return;
-        }
-
-        months.value.unshift(res.data);
-
-        name.value = "";
-    } catch (err) {
-        console.error(err);
-        error.value = "something went wrong, but it is not your fault";
-    } finally {
-        loading.value = false;
-    }
+    day[key] = val;
 }
 
-async function deleteMonth(m) {
-    loading.value = true;
+function validateWeightValue(event) {
+    // TODO(art): validate value
+}
 
-    try {
-        let res = await fetch(`/api/month?id=${m.id}`, { method: "DELETE" });
-        res = await res.json();
+async function updateWeightValue(event, day) {
+    const val = Number(event.target.value);
 
-        if (res.error) {
-            error.value = res.error.message;
-            return;
-        }
-
-        months.value = months.value.filter(it => it.id !== m.id);
-    } catch (err) {
-        console.error(err);
-        error.value = "something went wrong, but it is not your fault";
-    } finally {
-        loading.value = false;
+    if (isNaN(val)) {
+        console.error("weight input value is NaN, somehow validation failed");
+        console.log(event);
+        return;
     }
+
+    await updateDayValue(day, "weight", val * 1000);
 }
 
 </script>
@@ -89,33 +71,45 @@ async function deleteMonth(m) {
 
 <form @submit.prevent="createMonth">
     <input v-model="name">
-    <button type="submit" :disabled="loading">{{loading ? "Loading..." : "Create"}}</button>
+    <button type="submit">Create</button>
 </form>
 
-<p v-if="error">{{error}}</p>
+<div style="min-height: 2rem;">
+    <p v-if="loading">Loading...</p>
+    <p v-if="error">{{error.message}}</p>
+</div>
 
 <div v-if="months.length" class="items">
     <div v-for="it in months" class="items__item" :key="it.id">
-        <button class="item__delete-btn btn btn--danger box" @click="deleteMonth(it)">
+
+        <button class="item__delete-btn btn btn--danger box" @click="deleteMonth(it.id)">
             &#215;
         </button>
+
         <div class="table">
             <h3>{{ it.name }}</h3>
+
             <div class="table__item-container">
                 <div v-for="t in it.days" class="table__item" :key="t.id">
                     <input class="box"
                            title="weight"
                            :class="{ 'weight--active': t.weight > 0 }"
-                           :value="t.weight > 0 || ''"
+                           :value="t.weight > 0 ? t.weight / 1000 : ''"
+                           @input="validateWeightValue"
+                           @change="updateWeightValue($event, t)"
                     />
+
                     <button class="btn box"
                             title="supplement"
                             :class="{ 'supplement--active': !!t.supplement }"
+                            @click="updateDayValue(t, 'supplement', 1 - t.supplement)"
                     >
                     </button>
+
                     <button class="btn box"
                             title="workout"
                             :class="{ 'workout--active': !!t.workout }"
+                            @click="updateDayValue(t, 'workout', 1 - t.workout)"
                     >
                         {{ t.value }}
                     </button>
@@ -169,7 +163,7 @@ form {
 
 .box {
     border: 1px solid black;
-    width: 21px;
+    width: 31px;
     height: 21px;
     text-align: center;
     transition: all .2s ease-in-out;
