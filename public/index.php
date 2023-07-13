@@ -21,13 +21,7 @@ $app->ctx = [
     "db" => new database\Connection("localhost", "phypro", "user", "1234")
 ];
 
-$app->add_route(
-    "GET",
-    "/",
-    function() {
-        web\render_view("index");
-    }
-);
+$app->add_route("GET", "/", function() { web\render_view("index"); });
 
 $app->add_route(
     "POST",
@@ -37,12 +31,7 @@ $app->add_route(
 
         $name = trim($body["name"] ?? "");
 
-        if (!$name)
-        {
-            http_response_code(400);
-            echo json_encode(["error" => ["message" => "name is required"]]);
-            exit;
-        }
+        if (!$name) throw new http\Bad_Request("name is required");
 
         $res["data"]["name"] = $name;
 
@@ -80,12 +69,12 @@ $app->add_route(
             [$month_id]
         );
 
-
         http_response_code(201);
         echo json_encode($res);
     }
 );
 
+// TODO(art): add pagination
 $app->add_route(
     "GET",
     "/api/month",
@@ -112,26 +101,14 @@ $app->add_route(
     "DELETE",
     "/api/month",
     function(array $ctx) {
-        $id = trim($_GET["id"] ?? "");
-
-        if (!$id)
-        {
-            http_response_code(400);
-            echo json_encode(["error" => ["message" => "id is required"]]);
-            exit;
-        }
+        $id = $ctx["id"];
 
         $month = $ctx["db"]->query_one(
             "select name from month where id = ?",
             [$id]
         );
 
-        if (!$month)
-        {
-            http_response_code(404);
-            echo json_encode(["error" => ["message" => "month not found"]]);
-            exit;
-        }
+        if (!$month) throw new http\Not_Found("month not found");
 
         $ctx["db"]->exec("delete from month where id = ?", [$id]);
 
@@ -139,52 +116,28 @@ $app->add_route(
 
         http_response_code(200);
         echo json_encode(["data" => $month]);
-    }
+    },
+    ["require_id"]
 );
 
+// TODO(art): validate fields
 $app->add_route(
     "PATCH",
     "/api/day",
     function(array $ctx) {
-        $id = trim($_GET["id"] ?? "");
-
-        if (!$id)
-        {
-            http_response_code(400);
-            echo json_encode(["error" => ["message" => "id is required"]]);
-            exit;
-        }
+        $id = $ctx["id"];
 
         $body = json_decode(file_get_contents("php://input"), true);
+
         $fields = [];
+        $supported = ["weight", "workout", "supplement"];
 
-        // TODO(art): validate that fields are numbers
-
-        if (isset($body["workout"]))
+        foreach ($array_keys($body) as $key)
         {
-            $fields["workout"] = $body["workout"];
+            if (in_array($key, $supported)) $fields[$key] = $body[$key];
         }
 
-        if (isset($body["supplement"]))
-        {
-            $fields["supplement"] = $body["supplement"];
-        }
-
-        if (isset($body["weight"]))
-        {
-            $fields["weight"] = $body["weight"];
-        }
-
-        if (!$fields)
-        {
-            http_response_code(400);
-            echo json_encode([
-                "error" => [
-                    "message" => "provide field to update"
-                ]
-            ]);
-            exit;
-        }
+        if (!$fields) throw new http\Bad_Request("provide fields to update");
 
         $day = $ctx["db"]->query_one(
             "select id, weight, workout, supplement, value
@@ -192,12 +145,7 @@ $app->add_route(
             [$id]
         );
 
-        if (!$day)
-        {
-            http_response_code(404);
-            echo json_encode(["error" => ["message" => "day not found"]]);
-            exit;
-        }
+        if (!$day) throw new http\Not_Found("day not found");
 
         $sql = [];
         $vals = [];
@@ -213,8 +161,18 @@ $app->add_route(
 
         http_response_code(200);
         echo json_encode(["data" => $day]);
-    }
+    },
+    ["require_id"]
 );
+
+function require_id(array &$ctx)
+{
+    $id = trim($_GET["id"] ?? "");
+
+    if (!$id) throw new http\Bad_Request("id is required");
+
+    $ctx["id"] = $id;
+}
 
 try
 {
@@ -228,16 +186,25 @@ catch (http\Error $e)
 
     if ($type === "application/json")
     {
-        echo $e->json();
+        echo json_encode(["error" => $e->getData()]);
         exit;
     }
 
-    echo $e->message();
+    echo $e->getMessage();
 }
 catch (\Exception $e)
 {
     error_log($e->getMessage());
 
     http_response_code(500);
+
+    $type = $_SERVER["HTTP_CONTENT_TYPE"] ?? "";
+
+    if ($type === "application/json")
+    {
+        echo json_encode(["error" => ["message" => "internal server error"]]);
+        exit;
+    }
+
     echo "Something went wrong and it is not your fault";
 }

@@ -1,5 +1,7 @@
 <script setup>
 
+// TODO(art): add confirm to delete
+
 import * as Vue from "vue";
 import * as http from "@/http.js";
 
