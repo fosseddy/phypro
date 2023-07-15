@@ -1,53 +1,52 @@
 <script setup>
 
-// TODO(art): add confirm to delete
-// TODO(art): pagination is buggy af after delete
-
 import * as Vue from "vue";
 import * as http from "@/http.js";
 
 const name = Vue.ref("");
 const months = Vue.ref([]);
 const pagination = Vue.ref(null);
-const error = Vue.ref(null);
-const loading = Vue.ref(false);
 
 fetchMonths(1);
 
 async function fetchMonths(page) {
-    const data = await http.useApi(() => http.month.fetchAll(page), loading, error);
-    if (error.value) return;
-
-    console.log(data);
-
-    months.value = data.items;
-
-    if (data.page_total > 1) {
-        pagination.value = {
-            index: data.page_index,
-            total: data.page_total
-        };
-    } else {
-        pagination.value = null
+    const res = await http.month.fetchAll(page);
+    if (res.error) {
+        console.log(res.error);
+        return;
     }
+
+    months.value = res.data.items;
+    pagination.value = {
+        index: res.data.page_index,
+        total: res.data.page_total
+    };
 }
 
 async function createMonth() {
     const n = name.value.trim();
     if (!n) return;
 
-    const data = await http.useApi(() => http.month.create(n), loading, error);
-    if (error.value) return;
+    const res = await http.month.create(n);
+    if (res.error) {
+        console.log(res.error);
+        return;
+    }
 
-    months.value.unshift(data);
+    await fetchMonths(1);
     name.value = "";
 }
 
 async function deleteMonth(id) {
-    await http.useApi(() => http.month.remove(id), loading, error);
-    if (error.value) return;
+    if (!confirm("Are you sure?")) return;
 
-    months.value = months.value.filter(it => it.id !== id);
+    const res = await http.month.remove(id);
+    if (res.error) {
+        console.log(res.error);
+        return;
+    }
+
+    await fetchMonths(pagination.value.index);
 }
 
 async function updateDayValue(day, key, val) {
@@ -56,24 +55,32 @@ async function updateDayValue(day, key, val) {
         return;
     }
 
-    await http.useApi(
-        () => http.day.update(day.id, { [key]: val }),
-        loading,
-        error
-    );
-    console.log(error);
-    if (error.value) return;
+    const res = await http.day.update(day.id, { [key]: val });
 
-    day[key] = val;
-}
+    if (res.error) {
+        console.log(res.error);
+        return;
+    }
 
-function validateWeightValue(event) {
-    // TODO(art): validate value
+    day[key] = res.data[key];
 }
 
 async function updateWeightValue(event, day) {
-    const val = Number(event.target.value);
+    let val = event.target.value;
+    let match = false;
 
+    if (val === "") {
+        match = true;
+    } else {
+        match = /^[1-9](\d(\.\d)?)?$/.test(val);
+    }
+
+    if (!match) {
+        event.target.value = (day.weight / 1000) || "";
+        return;
+    }
+
+    val = Number(val);
     if (isNaN(val)) {
         console.error("weight input value is NaN, somehow validation failed");
         console.log(event);
@@ -94,10 +101,16 @@ async function updateWeightValue(event, day) {
     <button type="submit">Create</button>
 </form>
 
-<div style="min-height: 2rem;">
-    <p v-if="loading">Loading...</p>
-    <p v-if="error">{{error.message}}</p>
-</div>
+<ul v-if="pagination?.total > 1" class="pagination">
+    <li v-for="page in pagination.total" :key="page">
+        <button class="btn box"
+                :class="{'pagination--current': page === pagination.index}"
+                @click="pagination.index != page && fetchMonths(page)"
+        >
+            {{page}}
+        </button>
+    </li>
+</ul>
 
 <div v-if="months.length" class="items">
     <div v-for="it in months" class="items__item" :key="it.id">
@@ -107,28 +120,28 @@ async function updateWeightValue(event, day) {
         </button>
 
         <div class="table">
-            <h3>{{ it.name }}</h3>
+            <h3>{{it.name}}</h3>
 
             <div class="table__item-container">
                 <div v-for="t in it.days" class="table__item" :key="t.id">
                     <input class="box"
                            title="weight"
-                           :class="{ 'weight--active': t.weight > 0 }"
+                           maxlength="4"
+                           :class="{'weight--active': t.weight > 0}"
                            :value="t.weight > 0 ? t.weight / 1000 : ''"
-                           @input="validateWeightValue"
                            @change="updateWeightValue($event, t)"
                     />
 
                     <button class="btn box"
                             title="supplement"
-                            :class="{ 'supplement--active': !!t.supplement }"
+                            :class="{'supplement--active': !!t.supplement}"
                             @click="updateDayValue(t, 'supplement', 1 - t.supplement)"
                     >
                     </button>
 
                     <button class="btn box"
                             title="workout"
-                            :class="{ 'workout--active': !!t.workout }"
+                            :class="{'workout--active': !!t.workout}"
                             @click="updateDayValue(t, 'workout', 1 - t.workout)"
                     >
                         {{ t.value }}
@@ -138,17 +151,6 @@ async function updateWeightValue(event, day) {
         </div>
     </div>
 </div>
-
-<ul v-if="pagination" class="pagination">
-    <li v-for="page in pagination.total" :key="page">
-        <button class="btn box"
-                :class="{'pagination--current': page === pagination.index}"
-                @click="fetchMonths(page)"
-        >
-            {{page}}
-        </button>
-    </li>
-</ul>
 
 </template>
 
@@ -164,8 +166,6 @@ form {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    min-height: 33rem;
-    margin-bottom: 2rem;
 }
 
 .items__item {
@@ -202,7 +202,8 @@ form {
     transition: all .2s ease-in-out;
 }
 
-.box:hover {
+.box:hover,
+.box:focus {
     transform: scale(1.2);
 }
 
@@ -211,7 +212,8 @@ form {
     cursor: pointer;
 }
 
-.btn--danger:hover {
+.btn--danger:hover,
+.btn--danger:focus {
     background: lightcoral;
 }
 
@@ -230,6 +232,7 @@ form {
 .pagination {
     display: flex;
     list-style: none;
+    margin-bottom: 2rem;
 }
 
 .pagination--current {
