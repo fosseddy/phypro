@@ -96,11 +96,11 @@ $app->router->get("/api/month", function(array $ctx) {
     $stmt = $db->pdo->prepare(
         "select id, name from month
          order by created_at desc
-         limit :limit offset :offset"
+         limit ?, ?"
     );
 
-    $stmt->bindValue("offset", ($page_index - 1) * $per_page, \PDO::PARAM_INT);
-    $stmt->bindValue("limit", $per_page, \PDO::PARAM_INT);
+    $stmt->bindValue(1, ($page_index - 1) * $per_page, \PDO::PARAM_INT);
+    $stmt->bindValue(2, $per_page, \PDO::PARAM_INT);
     $stmt->execute();
 
     $months = $stmt->fetchAll();
