@@ -11,8 +11,8 @@ async function request(method, uri, body = null) {
 }
 
 export const month = {
-    async fetchAll() {
-        return request("GET", "/api/month");
+    async fetchAll(page = 1) {
+        return request("GET", `/api/month?page=${page}`);
     },
 
     async create(name) {

@@ -1,19 +1,36 @@
 <script setup>
 
 // TODO(art): add confirm to delete
+// TODO(art): pagination is buggy af after delete
 
 import * as Vue from "vue";
 import * as http from "@/http.js";
 
 const name = Vue.ref("");
 const months = Vue.ref([]);
+const pagination = Vue.ref(null);
 const error = Vue.ref(null);
 const loading = Vue.ref(false);
 
-(async () => {
-    const data = await http.useApi(http.month.fetchAll, loading, error);
-    if (!error.value) months.value = data.items;
-})();
+fetchMonths(1);
+
+async function fetchMonths(page) {
+    const data = await http.useApi(() => http.month.fetchAll(page), loading, error);
+    if (error.value) return;
+
+    console.log(data);
+
+    months.value = data.items;
+
+    if (data.page_total > 1) {
+        pagination.value = {
+            index: data.page_index,
+            total: data.page_total
+        };
+    } else {
+        pagination.value = null
+    }
+}
 
 async function createMonth() {
     const n = name.value.trim();
@@ -44,6 +61,7 @@ async function updateDayValue(day, key, val) {
         loading,
         error
     );
+    console.log(error);
     if (error.value) return;
 
     day[key] = val;
@@ -121,6 +139,17 @@ async function updateWeightValue(event, day) {
     </div>
 </div>
 
+<ul v-if="pagination" class="pagination">
+    <li v-for="page in pagination.total" :key="page">
+        <button class="btn box"
+                :class="{'pagination--current': page === pagination.index}"
+                @click="fetchMonths(page)"
+        >
+            {{page}}
+        </button>
+    </li>
+</ul>
+
 </template>
 
 
@@ -135,6 +164,8 @@ form {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    min-height: 33rem;
+    margin-bottom: 2rem;
 }
 
 .items__item {
@@ -194,6 +225,15 @@ form {
 
 .workout--active {
     background: lightgreen;
+}
+
+.pagination {
+    display: flex;
+    list-style: none;
+}
+
+.pagination--current {
+    background: lightsteelblue;
 }
 
 </style>
