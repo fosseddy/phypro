@@ -2,17 +2,14 @@
 
 set -xe
 
-rm -rf public/assets views/index.php
-
-mkdir -p views
+rm -rf public/assets public/index.html
 
 cd vue
 
 npm install
 npm run build
 
-mv dist/assets ../public
-mv dist/index.html ../views/index.php
+mv dist/* ../public
 
 rm -rf node_modules dist
 

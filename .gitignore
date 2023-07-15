@@ -2,3 +2,4 @@ node_modules
 dist
 views/index.php
 public/assets
+public/index.html
