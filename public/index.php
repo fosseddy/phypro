@@ -13,8 +13,7 @@ function debug($val)
 }
 
 require_once LIB_DIR . "/web.php";
-require_once LIB_DIR . "/view.php";
-require_once LIB_DIR . "/path.php";
+require_once LIB_DIR . "/http.php";
 require_once LIB_DIR . "/database.php";
 
 $app = new web\App();
@@ -24,7 +23,7 @@ $app->ctx = [
 ];
 
 $app->router->get("/", function() {
-    view\render("index");
+    require_once "index.html";
 });
 
 $app->router->post("/api/month", function(array $ctx) {
@@ -35,7 +34,7 @@ $app->router->post("/api/month", function(array $ctx) {
 
     $name = trim($body["name"] ?? "");
 
-    if (!$name) throw new http\Bad_Request("name is required");
+    if (!$name) throw new http\Error(400, "name is required");
 
     $res["name"] = $name;
 
@@ -100,12 +99,8 @@ $app->router->get("/api/month", function(array $ctx) {
          limit :limit offset :offset"
     );
 
-    $stmt->bindValue(
-        "offset",
-        ($page_index - 1) * $per_page,
-        \PDO::PARAM_INT
-    );
-    $stmt->bindParam("limit", $per_page, \PDO::PARAM_INT);
+    $stmt->bindValue("offset", ($page_index - 1) * $per_page, \PDO::PARAM_INT);
+    $stmt->bindValue("limit", $per_page, \PDO::PARAM_INT);
     $stmt->execute();
 
     $months = $stmt->fetchAll();
@@ -138,7 +133,7 @@ $app->router->delete("/api/month", function(array $ctx) {
 
     $month = $db->query_one("select name from month where id = ?", [$id]);
 
-    if (!$month) throw new http\Not_Found("month not found");
+    if (!$month) throw new http\Error(404, "month not found");
 
     $db->exec("delete from month where id = ?", [$id]);
 
@@ -208,11 +203,11 @@ $app->router->patch("/api/day", function(array $ctx) {
 
     if ($errors)
     {
-        throw new http\Bad_Request("invalid data", ["errors" => $errors]);
+        throw new http\Error(400, "invalid data", ["errors" => $errors]);
     }
     else if (!$fields)
     {
-        throw new http\Bad_Request("provide fields to update");
+        throw new http\Error(400, "provide fields to update");
     }
 
     $day = $db->query_one(
@@ -221,7 +216,7 @@ $app->router->patch("/api/day", function(array $ctx) {
         [$id]
     );
 
-    if (!$day) throw new http\Not_Found("day not found");
+    if (!$day) throw new http\Error(404, "day not found");
 
     $sql = [];
     $vals = [];
@@ -242,7 +237,7 @@ $app->router->patch("/api/day", function(array $ctx) {
 function require_id(array &$ctx)
 {
     $id = trim($_GET["id"] ?? "");
-    if (!$id) throw new http\Bad_Request("id is required");
+    if (!$id) throw new http\Error(400, "id is required");
     $ctx["id"] = $id;
 }
 
