@@ -5,11 +5,9 @@ declare(strict_types=1);
 const BASE_DIR = __DIR__ . "/..";
 const LIB_DIR = BASE_DIR . "/lib";
 
-function debug($val)
+function debug(...$vals)
 {
-    echo "<pre>";
-    var_dump($val);
-    echo "</pre>";
+    error_log(print_r([...$vals], true));
 }
 
 require_once LIB_DIR . "/web.php";
@@ -125,11 +123,13 @@ $app->router->get("/api/month", function(array $ctx) {
     ]]);
 });
 
-$app->router->delete("/api/month", function(array $ctx) {
+$app->router->delete("/api/month/:id", function(array $ctx) {
     [
         "db" => $db,
-        "id" => $id
+        "params" => $params
     ] = $ctx;
+
+    ["id" => $id] = $params;
 
     $month = $db->query_one("select name from month where id = ?", [$id]);
 
@@ -141,14 +141,16 @@ $app->router->delete("/api/month", function(array $ctx) {
 
     http_response_code(200);
     echo json_encode(["data" => $month]);
-}, ["require_id"]);
+});
 
-$app->router->patch("/api/day", function(array $ctx) {
+$app->router->patch("/api/day/:id", function(array $ctx) {
     [
         "db" => $db,
-        "id" => $id,
+        "params" => $params,
         "body" => $body
     ] = $ctx;
+
+    ["id" => $id] = $params;
 
     $fields = [];
     $errors = [];
@@ -232,14 +234,7 @@ $app->router->patch("/api/day", function(array $ctx) {
 
     http_response_code(200);
     echo json_encode(["data" => $day]);
-}, ["require_id", "with_json_body"]);
-
-function require_id(array &$ctx)
-{
-    $id = trim($_GET["id"] ?? "");
-    if (!$id) throw new http\Error(400, "id is required");
-    $ctx["id"] = $id;
-}
+}, ["with_json_body"]);
 
 function with_json_body(array &$ctx)
 {

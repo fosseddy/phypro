@@ -20,17 +20,13 @@ export const month = {
     },
 
     async remove(id) {
-        return request("DELETE", `/api/month?id=${id}`);
-    },
-
-    async update(id, name) {
-        return request("PATCH", `/api/month?id=${id}`, { name });
+        return request("DELETE", `/api/month/${id}`);
     }
 };
 
 export const day = {
     async update(id, { weight, workout, supplement }) {
-        return request("PATCH", `/api/day?id=${id}`, {
+        return request("PATCH", `/api/day/${id}`, {
             weight,
             workout,
             supplement

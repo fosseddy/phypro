@@ -203,7 +203,7 @@ form {
 }
 
 .box:hover,
-.box:focus {
+.box:focus-visible {
     transform: scale(1.2);
 }
 
